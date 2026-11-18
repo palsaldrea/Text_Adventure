@@ -1,6 +1,6 @@
 # Name: Andrea Palomeque Saldivar
 # Date: 11/18/2026
-# Description: Simple text adventure game with 5 different endings.
+# Description: Text adventure game with 5 different endings.
 
 from rich import print
 from rich.align import Align
@@ -54,6 +54,18 @@ items = {
     }
 }
 
+# Variables
+actionPoints = 6
+day = 1
+dayDone = False
+metWalter = False
+metElena = False
+metSofia = False
+knowSofia = False
+backExplored = False
+backUnlocked = False
+frontExplored = False
+
 # Functions
 
 # Constantly checks player morbidity; if it reaches goal, override everything and trigger bad ending
@@ -66,7 +78,7 @@ def displayJounral():
 
 def startDayOne():
     print()
-    print(Align.center("[bold blue]----- DAY ONE -----[/bold blue]"))
+    print(Align.center("[bold magenta]----- DAY ONE -----[/bold magenta]"))
     print()
     print("\tA faint, rhythmic rumbling stirs you from your sleep. Brain still foggy, you can't exactly remember where you are or how you got there.")
     print("\tYou slowly open your eyes.")
@@ -86,9 +98,11 @@ def startDayOne():
 def actionsDayOne(ap):
     cw = 0
     ce = 0
+    cs = 0
+    global dayDone
     while ap > 0:
         print()
-        if not backUnlocked:
+        if not metSofia:
             action = questionary.select(
                 f" What will you do? [{ap} action points remaining.]",
                 choices = [
@@ -107,7 +121,7 @@ def actionsDayOne(ap):
                 choices = [
                     questionary.Choice(title = f"   1. Talk to {'Walter' if metWalter else 'the man'}.\n", value = 1),
                     questionary.Choice(title = f"   2. Talk to {'Elena' if metElena else 'the woman'}.\n", value = 2),
-                    questionary.Choice(title = f"   3. Talk to {'Sofia' if metSofia else 'the woman at the back of the train'}.\n", value = 7),
+                    questionary.Choice(title = f"   3. Talk to {'Sofia' if knowSofia else 'the woman at the back of the train'}.\n", value = 7),
                     questionary.Choice(title = "   4. Explore the back of the train.\n", value = 3),
                     questionary.Choice(title = "   5. Explore the front of the train.\n", value = 4),
                     questionary.Choice(title = "   6. Look around your wagon.\n", value = 5),
@@ -127,9 +141,39 @@ def actionsDayOne(ap):
                     ap, ce = elenaDayOne(ap, ce)
                 else:
                     print("\tElena has closed her eyes, looks like she's trying to sleep.")
-            case _:
-                print("To be implemented.")
-                ap = 0
+
+            case 3:
+                if backExplored and metSofia:
+                    print("\tYou make your way towards the back of the train once more. The wagon remains unlocked and everything inside appears just as you left it. With nothing")
+                    print("\tnew to find, you return to your seat.")
+                else:
+                    ap = exploreBack(ap)
+
+            case 4:
+                if frontExplored:
+                    print("\tYou make your way towards the front of the train once more. The conductor's cabin remains firmly shut, just as before. There's nothing new to find")
+                    print("\there, so you head back to your seat.")
+                else:
+                    ap = exploreFront(ap)
+
+            case 5:
+                ap = lookAround(ap)
+
+            case 6:
+                ap = endDay()
+
+            case 7:
+                if cs < 2:
+                    ap, cs = sofiaDayOne(ap, cs)
+                else:
+                    print("\tYou try to approach Sofia once more, but she ignores you.")
+
+    if not dayDone:
+        print()
+        print("\tYou're too tired to do anything else. Back in your seat, you try your best to get comfortable and allow a new day to come.")
+        dayDone = True
+
+    print()
 
 def walterDayOne(ap, cw):
     global metWalter
@@ -140,7 +184,7 @@ def walterDayOne(ap, cw):
         print("\tYou approach the man by the end of a wagon, he seems to be staring at the continuous snowstorm outide the window. When he finally looks at you, he")
         print("\toffers you a warm smile, yet you can see a hint of worry behind it.")
         print()
-        print("\tWalter: \"Well good morning, I see you're finally awake.\"")
+        print("\t???: \"Well good morning, I see you're finally awake.\"")
         print()
 
         choice = questionary.select(
@@ -170,7 +214,7 @@ def walterDayOne(ap, cw):
                 print("\t         [green]Pleased to meet you.[/green]")
                 print()
                 print("\tYou give him your name and immediately return to your seat. You get the sense Walter is just as confused as you, and you have no idea how he can seem")
-                print("\tso optimistic about the whole situation")
+                print("\tso optimistic about the whole situation.")
                 player["morbidity"] += 1
 
         return ap - 1, cw + 1
@@ -201,7 +245,7 @@ def walterDayOne(ap, cw):
                 print("\tWalter looks at his restless leg, quickly placing a hand on it to stop it from bouncing.")
                 print()
                 print("\tWalter: [green]\"Well would you look at that, didn't even realize I was doing that. Forty years driving trains and not once have I been this uncertain about[/green]")
-                print("\t         [green]a journey. Don't you worry about me though, mighty kind of you to ask.")
+                print("\t         [green]a journey. Don't you worry about me though, mighty kind of you to ask.\"[/green]")
                 print()
                 print("\tYou return to your seat.")
                 player["empathy"] += 1
@@ -217,81 +261,319 @@ def elenaDayOne(ap, ce):
         print("\tYou decide to approach the woman who is looking at you expectantly with a calm smile, almost as if she already knew you were planning on talking to")
         print("\ther. She moves aside so you can take a seat next to her, which you cautiously do.")
         print()
-        print("\tElena: [red]\"Well good morning, I see you're finally awake.\"")
+        print("\t???: [red]\"Good morning. I was beginning to wonder when someone would come by.\"[/red]")
         print()
 
         choice = questionary.select(
             "",
             choices = [
                 questionary.Choice(title = "   Do you know where we are?", value = 1),
-                questionary.Choice(title = "   I don't really want to be.", value = 2),
+                questionary.Choice(title = "   You seem rather calm.", value = 2),
             ]
         ).ask()
         
         match choice:
             case 1:
                 print()
-                print("\tHe shakes his head, looking just as lost as you.")
+                print("\tElena: [red]\"I'm afraid not, no idea where we might be going either. Though I suppose the destination isn't often the most important part.[/red]")
+                print("\t        [red]My name's Elena, it's very nice to meet you.\"[/red]")
                 print()
-                print("\tWalter: [green]\"Wish I could tell you, I haven't the faintest idea. Don't remember getting on this train, either, strange bussiness, ain't it?[/green]")
-                print("\t         [green]Name's Walter, by the way. Pleased to meet you.\"[/green]")
-                print()
-                print("\tHe extends his hand and you shake it hesitantly, introducing yourself as well, it's nice knowing you're not alone in this. After a while you return")
-                print("\tto your seat.")
+                print("\tShe smiles, you find her mindset extremely odd given the situation, yet you still give her your name. It is a little reassuring knowing someone in")
+                print("\tthis train doesn't look alarmed.")
 
             case 2:
                 print()
-                print("\tThe man gives you an awkward smile, not knowing how to reply to your comment. After a brief silence, he adds.")
+                print("\tShe sighs, a faint smile not leaving her face.")
                 print()
-                print("\tWalter: [green]\"Ain't exactly the most pleasant way to start the morning, still might as well make the most of being awake. Name's Walter, by the way.[/green]")
-                print("\t         [green]Pleased to meet you.[/green]")
+                print("\tElena: [red]\"I suppose I've had some time to think. There are things I remember from before this moring, I believe there's a reason I'm here...[/red]")
+                print("\t        [red]I just haven't quite figured it out yet. It's nice knowing I'm not in this alone, my name's Elena.[/red]")
                 print()
-                print("\tYou give him your name and immediately return to your seat. You get the sense Walter is just as confused as you, and you have no idea how he can seem")
-                print("\tso optimistic about the whole situation")
-                player["morbidity"] += 1
+                print("\tYou tell her your name, wondering what she could possibly mean by her words, does she know things you don't? You try your hardest, but can't seem to")
+                print("\trecall anything. Eventually you go back to your seat")
 
         return ap - 1, ce + 1
     
     elif ce == 1:
         print("  [italic #ffa03e]-1 action point[/italic #ffa03e]")
         print()
-        print("\tYou decide to approach Walter again, he's still looking out the window, you notice his leg bouncing anxiously.")
+        print("\tYou decide to approach Elena again, she seems as composed as before. Once again, she smiles when she sees you.")
         print()
         choice = questionary.select(
             "",
             choices = [
-                questionary.Choice(title = "   Do you remember anything from before this?", value = 1),
-                questionary.Choice(title = "   Are you okay?", value = 2),
+                questionary.Choice(title = "   What do you remember?", value = 1),
+                questionary.Choice(title = "   Do you think we'll get home?", value = 2),
             ]
         ).ask()
 
         match choice:
             case 1:
                 print()
-                print("\tWalter: [green]\"Funnily enough I remember working on the railway. Spent the better part of forty years driving trains, as a matter of fact. But if you're[/green]")
-                print("\t         [green]asking where I was before waking up here? Couldn't tell you. It's all a little hazy.[/green]")
+                print("\tElena: [red]\"It's a little hard to explain, I remember being somewhere familiar... the feeling, more than anything. After that, my mind goes blank.[/red]")
+                print("\t        [red]It's strange, the memories don't frighten me as much as they probably should, I feel rather comforted here.[/red]")
                 print()
-                print("\tYou nod, agreeing that you can't remember where you were either, and then return to your seat.")
+                print("\tYou note that she doesn't remember getting on this train either, and think it rather weird she is not the least bit worried. You return to your seat.")
 
             case 2:
                 print()
-                print("\tWalter looks at his restless leg, quickly placing a hand on it to stop it from bouncing.")
-                print()
-                print("\tWalter: [green]\"Well would you look at that, didn't even realize I was doing that. Forty years driving trains and not once have I been this uncertain about[/green]")
-                print("\t         [green]a journey. Don't you worry about me though, mighty kind of you to ask.")
+                print("\tElena: [red]\"I would like to think so. There must be a reason my memories of home stayed with me, I believe we're meant to return eventually.[/red]")
+                print("\t        [red]Every journey has an end, even if you can't see it from where you're standing.\"[/red]")
                 print()
                 print("\tYou return to your seat.")
-                player["empathy"] += 1
 
         return ap - 1, ce + 1
 
-# Variables
+def sofiaDayOne(ap, cs):
+    global knowSofia
+    if cs == 0:
+        print("  [italic #ffa03e]-1 action point[/italic #ffa03e]")
+        print()
+        print("\tYou go to approach the young woman at the back of the train. She notices you almost immediately, watching you cautiously as you come closer.")
+        print("\tShe doesn't seem particularly welcoming, but she doesn't ask you to leave either.")
+        print()
+        print("\t???: [cyan]\"Can I help you?\"[/cyan]")
+        print()
 
-actionPoints = 6
-metWalter = False
-metElena = False
-metSofia = False
-backUnlocked = False
+        choice = questionary.select(
+            "",
+            choices = [
+                questionary.Choice(title = "   Have you noticed anything strange about this train?", value = 1),
+                questionary.Choice(title = "   How long have you been here?", value = 2),
+            ]
+        ).ask()
+        
+        match choice:
+            case 1:
+                print()
+                print("\tSofia: [cyan]\"Strange is putting it mildly. I have been here longer than the rest, and every time new people arrive, it never takes long[/cyan]")
+                print("\t       [cyan]before they start vanishing. I'm Sofia, you'd be better off not trusting everything you see here.\"[/cyan]")
+                print()
+                print("\tHer words leave you with more questions than answers. You decide not to press her further and make your way back to your seat, worried")
+                print("\tabout her words. How long has this been going on, and what did she mean by disappearing?")
+
+            case 2:
+                print()
+                print("\tSofia: [cyan]\"Longer than I can remember. I used to count the days, then I started counting the people who disappeared instead.[/cyan]")
+                print("\t        [cyan]Funny thing is, I still look exactly the same. I'm Sofia, can't say it's nice to meet you.[/cyan]")
+                print()
+                print("\tYou get the feeling there's more to her story than she's willing to share. Deciding not to push your luck, you leave her to herself and")
+                print("\treturn to your seat.")
+        knowSofia = True
+        return ap - 1, cs + 1
+        
+    elif cs == 1:
+        print("  [italic #ffa03e]-1 action point[/italic #ffa03e]")
+        print()
+        print("\tYou find Sofia sitting in her usual seat, quietly writing in a journal. She pauses when she notices you approaching.")
+        print()
+        choice = questionary.select(
+            "",
+            choices = [
+                questionary.Choice(title = "   Tell me more about the disappearances", value = 1),
+                questionary.Choice(title = "   I think I'll be the first to disappear", value = 2),
+            ]
+        ).ask()
+    
+        match choice:
+            case 1:
+                print()
+                print("\tSofia: [cyan]\"Not much to tell, people slowly stop making sense or losing hope, and then one morning they're just gone. If you know of someone[/cyan]")
+                print("\t        [cyan]acting strange, don't expect to see them much longer.[/cyan]")
+                print()
+                print("\tYou make note of her warning, feeling a little uneasy. It sounds like it has happened to many people before. With a heavy heart and a sense of dread")
+                print("\tyou return to your seat.")
+
+            case 2:
+                print()
+                print("\tSofia quickly shots her gaze up at you, giving you a stern look as if saying your comment wasn't funny. Not that you were trying to be.")
+                print()
+                print("\tSofia: [cyan]\"Don't say that.[/cyan]")
+                print()
+                print("\tShe stares at you for a few more seconds, not saying anything. You decide to return to your seat.")
+        return ap - 1, cs + 1
+
+def unlockBack(ap):
+    global metSofia
+    choice = questionary.select(
+        f"What will you do? [{ap} action points remaining]",
+        choices = [
+            questionary.Choice(title = "   Go inside", value = 1),
+            questionary.Choice(title = "   Return to your seat", value = 2),
+        ]
+    ).ask()
+
+    match choice:
+        case 1:
+            if ap > 0:
+                print()
+                print("  [italic #ffa03e]-1 action point[/italic #ffa03e]")
+                ap = ap - 1
+                print()
+                print("\tYou hesitate for a moment before stepping inside. The wagon is dimly lit, with only a few faint lights illuminating the rows of empty seats. The air")
+                print("\tfeels unusually still compared to the rest of the train.")
+                print()
+                print("\tAs you look around, you notice someone sitting near the far end of the carriage. A young woman, sitting quietly by the window. She doesn't seem to have")
+                print("\tnoticed you yet, her attention fixed on the scenery outside.")
+                print()
+                choice = questionary.select(
+                    "Do you approach her?",
+                    choices = [
+                        questionary.Choice(title = "   Yes", value = 1),
+                        questionary.Choice(title = "   No", value = 2),
+                    ]
+                ).ask()
+
+                match choice:
+                    case 1:
+                        print()
+                        print("  [italic #ffa03e]-1 action point[/italic #ffa03e]")
+                        ap = ap - 1
+                        print()
+                        print("\tYou decide to approach the young woman. She notices you almost immediately, her eyes following your every movement. She looks you over cautiously,")
+                        print("\talmost as if trying to determine whether she can trust you. Before you have a chance to say anything, she speaks.")
+                        print()
+                        print("\t???: [cyan]\"You shouldn't be here\"[/cyan]")
+                        print()
+                        print("\tHer voice is quiet, but there's a hint of suspicion behind her words. She doesn't offer much else, and you decide not to press her any further")
+                        print("\tfor now. You leave the wagon and make your way back to your seat.")
+                        metSofia = True
+                        return ap
+
+                    case 2:
+                        print()
+                        print("\tThere's something rather unusual about finding someone tucked away in an otherwise empty wagon, but you decide not to disturb her. Perhaps you'll have")
+                        print("\ta chance to speak with her another time.")
+                        print()
+                        print("\tYou leave the wagon and make your way back to your seat.") 
+                        return ap
+
+            else: 
+                print("\tYou are too tired for that, so you return to your seat.")
+                return ap
+        case 2:
+            print()
+            print("\tYou peer inside, but the dimly lit wagon offers little reason to venture further. Deciding to leave it for another time, you close the door and make your way")
+            print("\tback to your seat.")
+            return ap
+
+def exploreBack(ap):
+    print("  [italic #ffa03e]-1 action point[/italic #ffa03e]")
+    ap = ap - 1
+    global backExplored
+    global backUnlocked
+    if not backExplored and not metSofia:
+        print()
+        print("\tYou make your way towards the back of the train, passing through the connecting doors between wagons. Unlike the others, this carriage is noticeably")
+        print("\tquieter. At the very end, you find a single wagon with its door firmly locked.")
+        print()
+        backExplored = True
+        if items["key"] in player["inventory"]:
+            backUnlocked = True
+            print("\tYou notice the small keyhole beneath the handle. Remembering the key in your inventory, you take it out and carefully slide it into the lock. It turns") 
+            print("\twith a soft click, and the door creaks open.")
+            print()
+            ap = unlockBack(ap)
+            return ap
+
+        else:
+            print("\tYou try the handle, but it doesn't budge. A small keyhole sits just beneath it. Whatever is inside, you'll need to find a key before you can get in.")
+            print("\tWith no other way forward, you head back to your seat.")
+            return ap
+
+    elif backExplored and not backUnlocked:
+        print()
+        print("\tYou make your way towards the back of the train once more, stopping in front of the locked wagon.")
+        print()
+        if items["key"] in player["inventory"]:
+            backUnlocked = True
+            print("\tYou notice the small keyhole beneath the handle. Remembering the key in your inventory, you take it out and carefully slide it into the lock. It turns") 
+            print("\twith a soft click, and the door creaks open.")
+            print()
+            ap = unlockBack(ap)
+            return ap
+
+        else:
+            print("\tUnfortunately, without the key, there's still no way to get inside, the door remains firmly shut. Deciding there's nothing more you can do for now,")
+            print("\tyou return to your seat.")
+            return ap
+
+    elif backUnlocked and not metSofia:
+        print()
+        print("\tYou stand once again at the entrance of the now unlocked door.")
+        print()
+        ap = unlockBack(ap)
+        return ap
+
+def exploreFront(ap):
+    print("  [italic #ffa03e]-1 action point[/italic #ffa03e]")
+    ap = ap - 1
+    global frontExplored
+    frontExplored = True
+    if day <= 2:
+        print()
+        print("\tYou make your way towards the front of the train, passing through a few connecting doors. At the very front, you find the conductor's cabin. The door")
+        print("\tis firmly shut, with no visible keyhole or handle.")
+        print()
+        print("\tWith no way forward, you make your way back to your seat.")
+        print()
+        return ap
+
+def lookAround(ap):
+    print("  [italic #ffa03e]-1 action point[/italic #ffa03e]")
+    ap = ap - 1
+    print()
+    print("\tYou decide to take a closer look around your wagon. Most of the seats are empty, and a few pieces of unattended luggage have been left behind.")
+    print("\tIt's strange that nobody seems to have come back for them. Perhaps there's something worth investigating.")
+    print()
+    choice = questionary.select(
+        "",
+        choices = [
+            questionary.Choice(title = "   Look between the seats", value = 1),
+            questionary.Choice(title = "   Look inside abandoned luggage", value = 2),
+        ]
+    ).ask()
+
+    match choice:
+        case 1:
+            if items["key"] not in player["inventory"]:
+                print()
+                print("\tYou carefully inspect the gaps between the seats, moving aside a few scraps of paper and dust. Something metallic catches your eye. Reaching")
+                print("\tdown, you retrieve a small, worn key. You're not sure what it belongs to, but it might come in handy.")
+                player["inventory"].append(items["key"])
+                print()
+                print(f"\t[bold magenta]You obtained: {items["key"]["name"]}")
+                print()
+                print("\tYou finish searching and return to your seat.")
+                return ap
+            else:
+                print()
+                print("\tYou check between the seats once more, not finding anything new. You return to your seat.")
+                return ap
+
+        case 2:
+            if items["journal"] not in player["inventory"]:
+                print()
+                print("\tYou approach one of the unattended suitcases and carefully open it. Inside, among a few scattered belongings, you find a small journal. You") 
+                print("\ttake the journal with you, wondering who it might belong to.")
+                player["inventory"].append(items["journal"])
+                print()
+                print(f"\t[bold magenta]You obtained: {items["journal"]["name"]}")
+                print()
+                print("\tYou close the suitcase and return to your seat.")
+                print()
+                return ap
+            else:
+                print()
+                print("\tYou check the luggage again, not finding anything new. You return to your seat.")
+                print()
+                return ap
+
+def endDay():
+    print("\tYou choose to settle back into your seat. The steady rumbling of the train and its gentle rocking soon begin to lull you to sleep.")
+    print("\tWhatever this place is, perhaps you'll find some answers tomorrow. You close your eyes and drift off.")
+    global dayDone
+    dayDone = True
+    return 0
 
 # Main
 def main():
